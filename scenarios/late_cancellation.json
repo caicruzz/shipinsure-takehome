@@ -1,0 +1,45 @@
+{
+  "description": "Happy path, then the renewal is cancelled after it was billed: a negative adjustment.",
+  "shop": "demo-coffee.myshopify.com",
+  "deliveries": [
+    {
+      "source": "shopify",
+      "topic": "orders/create",
+      "webhook_id": "b54557e4-bdd9-4b37-8a5f-bf7d70bcd043",
+      "fixture": "shopify/order_original_create.json",
+      "label": "original order O (ShipInsure item)"
+    },
+    {
+      "source": "recharge",
+      "topic": "subscription/created",
+      "fixture": "recharge/subscription_created.json",
+      "label": "subscription S created"
+    },
+    {
+      "source": "recharge",
+      "topic": "order/created",
+      "fixture": "recharge/order_checkout_created.json",
+      "label": "Recharge checkout order (O -> S)"
+    },
+    {
+      "source": "shopify",
+      "topic": "orders/create",
+      "webhook_id": "3c1f0a52-8e1e-4f4b-9b8e-2b0d5f6a7c11",
+      "fixture": "shopify/order_renewal_create.json",
+      "label": "renewal order R (no item)"
+    },
+    {
+      "source": "recharge",
+      "topic": "order/created",
+      "fixture": "recharge/order_recurring_created.json",
+      "label": "Recharge recurring order (R -> S)"
+    },
+    {
+      "source": "shopify",
+      "topic": "orders/cancelled",
+      "webhook_id": "9a7d2e10-4c3b-4d8e-a1f2-6e5c4b3a2d19",
+      "fixture": "shopify/order_renewal_cancelled.json",
+      "label": "renewal R cancelled"
+    }
+  ]
+}

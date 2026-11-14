@@ -1,0 +1,45 @@
+{
+  "description": "Happy path, then the original order is edited to remove the ShipInsure item: both O and R are reversed.",
+  "shop": "demo-coffee.myshopify.com",
+  "deliveries": [
+    {
+      "source": "shopify",
+      "topic": "orders/create",
+      "webhook_id": "b54557e4-bdd9-4b37-8a5f-bf7d70bcd043",
+      "fixture": "shopify/order_original_create.json",
+      "label": "original order O (ShipInsure item)"
+    },
+    {
+      "source": "recharge",
+      "topic": "subscription/created",
+      "fixture": "recharge/subscription_created.json",
+      "label": "subscription S created"
+    },
+    {
+      "source": "recharge",
+      "topic": "order/created",
+      "fixture": "recharge/order_checkout_created.json",
+      "label": "Recharge checkout order (O -> S)"
+    },
+    {
+      "source": "shopify",
+      "topic": "orders/create",
+      "webhook_id": "3c1f0a52-8e1e-4f4b-9b8e-2b0d5f6a7c11",
+      "fixture": "shopify/order_renewal_create.json",
+      "label": "renewal order R (no item)"
+    },
+    {
+      "source": "recharge",
+      "topic": "order/created",
+      "fixture": "recharge/order_recurring_created.json",
+      "label": "Recharge recurring order (R -> S)"
+    },
+    {
+      "source": "shopify",
+      "topic": "orders/updated",
+      "webhook_id": "e2b4c6d8-1a3f-4e5d-8c7b-9f0a1b2c3d4e",
+      "fixture": "shopify/order_original_item_removed.json",
+      "label": "O edited: ShipInsure item removed"
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "subscription": {
+    "id": 410000001,
+    "address_id": 61000001,
+    "customer_id": 98000001,
+    "analytics_data": {
+      "utm_params": []
+    },
+    "cancellation_reason": "Too much coffee",
+    "cancellation_reason_comments": null,
+    "cancelled_at": "2026-09-15T16:00:00+00:00",
+    "charge_interval_frequency": "1",
+    "order_interval_frequency": "1",
+    "order_interval_unit": "month",
+    "created_at": "2026-08-01T14:00:05+00:00",
+    "updated_at": "2026-09-15T16:00:00+00:00",
+    "external_product_id": {
+      "ecommerce": "8800000000001"
+    },
+    "external_variant_id": {
+      "ecommerce": "45000000000001"
+    },
+    "has_queued_charges": false,
+    "is_prepaid": false,
+    "is_skippable": true,
+    "is_swappable": true,
+    "max_retries_reached": false,
+    "next_charge_scheduled_at": null,
+    "order_day_of_month": null,
+    "order_day_of_week": null,
+    "presentment_currency": "USD",
+    "price": "18.00",
+    "product_title": "House Blend Coffee",
+    "properties": [],
+    "quantity": 1,
+    "sku": "COFFEE-HB-12",
+    "sku_override": false,
+    "status": "cancelled",
+    "variant_title": "12 oz / Whole Bean"
+  }
+}

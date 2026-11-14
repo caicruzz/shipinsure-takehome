@@ -1,0 +1,55 @@
+{
+  "id": 6100000000002,
+  "admin_graphql_api_id": "gid://shopify/Order/6100000000002",
+  "name": "#1002",
+  "order_number": 1002,
+  "created_at": "2026-09-01T10:05:00-04:00",
+  "updated_at": "2026-09-03T12:00:00-04:00",
+  "processed_at": "2026-09-01T10:05:00-04:00",
+  "cancelled_at": "2026-09-03T12:00:00-04:00",
+  "cancel_reason": "customer",
+  "currency": "USD",
+  "presentment_currency": "USD",
+  "subtotal_price": "18.00",
+  "total_price": "18.00",
+  "financial_status": "refunded",
+  "fulfillment_status": null,
+  "source_name": "subscription_contract",
+  "tags": "Subscription Recurring Order",
+  "test": false,
+  "customer": {
+    "id": 7200000000001,
+    "admin_graphql_api_id": "gid://shopify/Customer/7200000000001"
+  },
+  "line_items": [
+    {
+      "id": 14100000000021,
+      "admin_graphql_api_id": "gid://shopify/LineItem/14100000000021",
+      "product_id": 8800000000001,
+      "variant_id": 45000000000001,
+      "title": "House Blend Coffee",
+      "variant_title": "12 oz / Whole Bean",
+      "name": "House Blend Coffee - 12 oz / Whole Bean",
+      "vendor": "Demo Coffee Co",
+      "sku": "COFFEE-HB-12",
+      "quantity": 1,
+      "current_quantity": 1,
+      "fulfillable_quantity": 1,
+      "price": "18.00",
+      "price_set": {
+        "shop_money": {
+          "amount": "18.00",
+          "currency_code": "USD"
+        },
+        "presentment_money": {
+          "amount": "18.00",
+          "currency_code": "USD"
+        }
+      },
+      "requires_shipping": true,
+      "taxable": true,
+      "gift_card": false,
+      "properties": []
+    }
+  ]
+}
