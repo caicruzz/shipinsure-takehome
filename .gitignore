@@ -1,0 +1,8 @@
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.chalice/deployments/
+.chalice/venv/
+*.db
+*.db-journal

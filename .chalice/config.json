@@ -1,0 +1,12 @@
+{
+  "version": "2.0",
+  "app_name": "shipinsure-covered-orders",
+  "stages": {
+    "dev": {
+      "api_gateway_stage": "api",
+      "environment_variables": {
+        "DATABASE_URL": "sqlite:////tmp/shipinsure.db"
+      }
+    }
+  }
+}

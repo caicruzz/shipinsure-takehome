@@ -1,0 +1,3 @@
+# Local development and tests. Kept separate so pytest is not packaged into the Lambda.
+-r requirements.txt
+pytest==9.2.0
