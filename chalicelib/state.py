@@ -33,6 +33,7 @@ def upsert(session: Session, record: StateRecord) -> None:
     values = asdict(record)
     match record:
         case ShopifyOrder():
+            values["variant_ids"] = list(record.variant_ids)
             _guarded_upsert(session, ShopifyOrderRow, values, ["shop", "order_id"])
         case RechargeOrder():
             values["subscription_ids"] = list(record.subscription_ids)
@@ -48,6 +49,8 @@ def load_snapshot(session: Session) -> Snapshot:
         ShopifyOrder(
             shop=row.shop,
             order_id=row.order_id,
+            customer_id=row.customer_id,
+            variant_ids=tuple(row.variant_ids),
             premium_cents=row.premium_cents,
             currency=row.currency,
             created_at=row.created_at,
@@ -61,6 +64,7 @@ def load_snapshot(session: Session) -> Snapshot:
             recharge_order_id=row.recharge_order_id,
             type=row.type,
             shopify_order_id=row.shopify_order_id,
+            shopify_customer_id=row.shopify_customer_id,
             subscription_ids=tuple(row.subscription_ids),
             status=row.status,
             updated_at=row.updated_at,
@@ -70,7 +74,10 @@ def load_snapshot(session: Session) -> Snapshot:
     subscriptions = [
         Subscription(
             subscription_id=row.subscription_id,
+            customer_id=row.customer_id,
+            variant_id=row.variant_id,
             status=row.status,
+            created_at=row.created_at,
             cancelled_at=row.cancelled_at,
             updated_at=row.updated_at,
         )

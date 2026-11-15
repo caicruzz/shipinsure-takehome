@@ -55,6 +55,17 @@ def shipinsure_premium_cents(order: Mapping[str, Any]) -> int | None:
     return sum(premiums) if premiums else None
 
 
+def _customer_id(order: Mapping[str, Any]) -> str | None:
+    customer = order.get("customer") or {}
+    return str(customer["id"]) if customer.get("id") is not None else None
+
+
+def _variant_ids(order: Mapping[str, Any]) -> tuple[str, ...]:
+    # Every variant purchased, including items later removed: matching asks what the
+    # customer bought at checkout. Custom line items have no variant_id.
+    return tuple(sorted({str(item["variant_id"]) for item in order.get("line_items") or [] if item.get("variant_id")}))
+
+
 def normalize(topic: str, shop: str, payload: Mapping[str, Any]) -> list[ShopifyOrder]:
     if topic not in ORDER_TOPICS:
         return []
@@ -63,6 +74,8 @@ def normalize(topic: str, shop: str, payload: Mapping[str, Any]) -> list[Shopify
             ShopifyOrder(
                 shop=shop,
                 order_id=str(payload["id"]),
+                customer_id=_customer_id(payload),
+                variant_ids=_variant_ids(payload),
                 premium_cents=shipinsure_premium_cents(payload),
                 currency=str(payload["currency"]),
                 created_at=required_timestamp(payload, "created_at"),

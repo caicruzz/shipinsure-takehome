@@ -1,4 +1,4 @@
-"""TDD §7 scenarios 1, 2 and 4, plus decisions that change after billing (§9 Built #6)."""
+"""TDD §7 scenarios replayed from fixtures (scenario 3, the permutations, is in test_permutations.py)."""
 
 from __future__ import annotations
 
@@ -8,10 +8,14 @@ from chalicelib.models import EventInbox, EventStatus, LedgerEntry
 from chalicelib.resolve import CoverageStatus, Reason
 from chalicelib.scenarios import replay
 from tests.helpers import (
+    DUPLICATE_PURCHASE,
     ORIGINAL,
+    ORIGINAL_2,
     RENEWAL,
     RENEWAL_2,
+    RENEWAL_4,
     SUBSCRIPTION,
+    SUBSCRIPTION_2,
     balance_cents,
     balance_rows,
     coverage_by_order,
@@ -32,7 +36,7 @@ def test_scenario_1_happy_path_charges_direct_and_inherited(session_factory):
     assert coverage[ORIGINAL].status == CoverageStatus.COVERED_DIRECT
     assert coverage[RENEWAL].status == CoverageStatus.COVERED_INHERITED
     assert coverage[RENEWAL].subscription_id == SUBSCRIPTION
-    assert coverage[RENEWAL].origin_order_id == ORIGINAL
+    assert coverage[RENEWAL].origin_order_id == ORIGINAL  # found by customer + variant + time
     assert not [r for r in coverage.values() if r.status == CoverageStatus.PENDING]
 
     entries = _ledger(session_factory)
@@ -55,46 +59,82 @@ def test_ledger_rows_trace_back_to_the_raw_event_that_caused_them(session_factor
 def test_scenario_2_every_delivery_three_times_is_deduplicated(session_factory):
     results = replay(session_factory, deliveries("duplicates"))
 
-    assert sum(not r.duplicate for r in results) == 5
-    assert sum(r.duplicate for r in results) == 10
+    assert sum(not r.duplicate for r in results) == 4
+    assert sum(r.duplicate for r in results) == 8
     with session_factory() as session:
         rows = list(session.scalars(select(EventInbox)))
-        assert len(rows) == 5
+        assert len(rows) == 4
         assert {row.delivery_count for row in rows} == {3}
         assert session.scalar(select(func.count()).select_from(LedgerEntry)) == 2
     assert balance_cents(session_factory) == {ORIGINAL: 250, RENEWAL: 250}
 
 
-def test_scenario_4_missing_checkout_is_pending_then_charged_when_it_arrives(session_factory):
-    *first, late_checkout = deliveries("missing_checkout")
-    replay(session_factory, first)
-
-    renewal = coverage_by_order(session_factory)[RENEWAL]
-    assert renewal.status == CoverageStatus.PENDING
-    assert renewal.reason == Reason.MISSING_SUBSCRIPTION_ORIGIN
-    assert balance_cents(session_factory) == {ORIGINAL: 250}
-
-    replay(session_factory, [late_checkout])
-
-    assert coverage_by_order(session_factory)[RENEWAL].status == CoverageStatus.COVERED_INHERITED
-    assert balance_cents(session_factory) == {ORIGINAL: 250, RENEWAL: 250}
-
-
 def test_out_of_order_walks_through_each_pending_reason(session_factory):
-    steps = deliveries("out_of_order")  # recurring RO, R, S, checkout RO, O
     seen = []
-    for delivery in steps:
+    for delivery in deliveries("out_of_order"):  # recurring Recharge order, R, S, O
         replay(session_factory, [delivery])
         seen.append(coverage_by_order(session_factory)[RENEWAL].reason)
 
     assert seen == [
         Reason.MISSING_SHOPIFY_ORDER,
+        Reason.MISSING_SUBSCRIPTION,
         Reason.MISSING_SUBSCRIPTION_ORIGIN,
-        Reason.MISSING_SUBSCRIPTION_ORIGIN,
-        Reason.MISSING_ORIGIN_ORDER,
         None,
     ]
     assert balance_cents(session_factory) == {ORIGINAL: 250, RENEWAL: 250}
+
+
+def test_scenario_4_original_order_last_is_pending_then_charged(session_factory):
+    *first, original = deliveries("original_order_last")
+    replay(session_factory, first)
+
+    renewal = coverage_by_order(session_factory)[RENEWAL]
+    assert (renewal.status, renewal.reason) == (CoverageStatus.PENDING, Reason.MISSING_SUBSCRIPTION_ORIGIN)
+    assert balance_cents(session_factory) == {}
+
+    replay(session_factory, [original])
+
+    assert coverage_by_order(session_factory)[RENEWAL].status == CoverageStatus.COVERED_INHERITED
+    assert balance_cents(session_factory) == {ORIGINAL: 250, RENEWAL: 250}
+
+
+def test_scenario_5_two_qualifying_orders_leave_renewal_pending_and_unbilled(session_factory):
+    replay(session_factory, deliveries("ambiguous_origin"))
+
+    coverage = coverage_by_order(session_factory)
+    assert (coverage[RENEWAL].status, coverage[RENEWAL].reason) == (
+        CoverageStatus.PENDING,
+        Reason.AMBIGUOUS_SUBSCRIPTION_ORIGIN,
+    )
+    assert coverage[DUPLICATE_PURCHASE].reason == Reason.NO_SHIPINSURE_ITEM
+    assert balance_cents(session_factory) == {ORIGINAL: 250}
+
+
+def test_ambiguity_that_appears_after_billing_reverses_the_charge(session_factory):
+    steps = {d.label: d for d in deliveries("ambiguous_origin")}
+    duplicate = steps.pop("second order, same customer + variant")
+    replay(session_factory, list(steps.values()))
+    assert balance_cents(session_factory) == {ORIGINAL: 250, RENEWAL: 250}
+
+    replay(session_factory, [duplicate])
+
+    assert coverage_by_order(session_factory)[RENEWAL].reason == Reason.AMBIGUOUS_SUBSCRIPTION_ORIGIN
+    last = _ledger(session_factory)[-1]
+    assert (last.order_id, last.amount_cents, last.basis) == (
+        RENEWAL,
+        -250,
+        "reversal:ambiguous_subscription_origin",
+    )
+    assert balance_cents(session_factory) == {ORIGINAL: 250, RENEWAL: 0}
+
+
+def test_scenario_6_earlier_renewal_is_not_mistaken_for_an_original_order(session_factory):
+    replay(session_factory, deliveries("renewal_not_origin"))
+
+    renewal_4 = coverage_by_order(session_factory)[RENEWAL_4]
+    assert renewal_4.status == CoverageStatus.COVERED_INHERITED
+    assert (renewal_4.subscription_id, renewal_4.origin_order_id) == (SUBSCRIPTION_2, ORIGINAL_2)
+    assert balance_cents(session_factory) == {ORIGINAL: 250, RENEWAL: 250, ORIGINAL_2: 250, RENEWAL_4: 250}
 
 
 def test_renewal_cancelled_after_billing_posts_negative_adjustment(session_factory):

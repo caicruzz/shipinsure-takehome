@@ -50,22 +50,22 @@ def test_duplicate_delivery_bumps_count_and_is_not_reprocessed(session_factory, 
 
 
 def test_recharge_dedupe_key_is_topic_object_and_version(session_factory):
-    result = ingest_recharge(session_factory, "order/created", {}, body("recharge/order_checkout_created.json"))
+    result = ingest_recharge(session_factory, "order/created", {}, body("recharge/order_recurring_created.json"))
     with session_factory() as session:
         event = session.get_one(EventInbox, result.event_id)
-    assert event.dedupe_key == "order/created:520000001:2026-08-01T14:00:06+00:00"
+    assert event.dedupe_key == "order/created:520000002:2026-09-01T14:05:30+00:00"
 
 
 def test_new_version_of_same_recharge_object_is_a_new_event(session_factory):
-    payload = json.loads(body("recharge/order_checkout_created.json"))
+    payload = json.loads(body("recharge/order_recurring_created.json"))
     first = ingest_recharge(session_factory, "order/updated", {}, json.dumps(payload))
-    payload["order"]["updated_at"] = "2026-08-01T15:00:00+00:00"
+    payload["order"]["updated_at"] = "2026-09-01T15:00:00+00:00"
     second = ingest_recharge(session_factory, "order/updated", {}, json.dumps(payload))
     assert not second.duplicate and second.event_id != first.event_id
 
 
 def test_processing_failure_marks_row_failed_and_keeps_it(session_factory, monkeypatch):
-    def boom(_snapshot):
+    def boom(*_args):
         raise RuntimeError("resolver exploded")
 
     monkeypatch.setattr(ingest, "resolve_all", boom)

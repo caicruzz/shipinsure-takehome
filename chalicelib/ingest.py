@@ -20,7 +20,7 @@ from typing import Any
 from sqlalchemy import update
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
-from chalicelib import ledger, state
+from chalicelib import config, ledger, state
 from chalicelib.adapters import SUBSCRIPTION_PLATFORMS, UnsupportedPayload
 from chalicelib.adapters import shopify as shopify_adapter
 from chalicelib.adapters.recharge import resource_for_topic
@@ -170,7 +170,7 @@ def process_event(session_factory: SessionFactory, event_id: int) -> str:
             for record in records:
                 state.upsert(session, record)
             if records:
-                resolutions = resolve_all(state.load_snapshot(session))
+                resolutions = resolve_all(state.load_snapshot(session), config.subscription_origin_window())
                 ledger.post_all(session, resolutions, source_event_id=event_id)
             event.status = EventStatus.PROCESSED if records else EventStatus.IGNORED
             event.error = None

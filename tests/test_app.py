@@ -63,7 +63,7 @@ def test_recharge_topic_comes_from_the_route(client):
     response = client.http.post(
         "/webhooks/recharge/order/created",
         headers={"Content-Type": "application/json"},
-        body=fixture_body("recharge/order_checkout_created.json"),
+        body=fixture_body("recharge/order_recurring_created.json"),
     )
     assert response.status_code == 200
     assert response.json_body["status"] == "processed"
@@ -81,7 +81,7 @@ def test_recharge_bad_body_is_400(client):
 def test_processing_failure_still_returns_200(client, monkeypatch):
     from chalicelib import ingest
 
-    monkeypatch.setattr(ingest, "resolve_all", lambda _s: 1 / 0)
+    monkeypatch.setattr(ingest, "resolve_all", lambda *_: 1 / 0)
     response = client.http.post(
         "/webhooks/shopify", headers=shopify_headers(), body=fixture_body("shopify/order_original_create.json")
     )

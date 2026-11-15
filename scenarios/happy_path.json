@@ -1,5 +1,5 @@
 {
-  "description": "Scenario 1. Original order -> subscription -> checkout order -> renewal, in natural order.",
+  "description": "Scenario 1. Original order O -> subscription S -> renewal R -> recurring Recharge order. O is matched to S by customer + variant + time.",
   "shop": "demo-coffee.myshopify.com",
   "deliveries": [
     {
@@ -14,12 +14,6 @@
       "topic": "subscription/created",
       "fixture": "recharge/subscription_created.json",
       "label": "subscription S created"
-    },
-    {
-      "source": "recharge",
-      "topic": "order/created",
-      "fixture": "recharge/order_checkout_created.json",
-      "label": "Recharge checkout order (O -> S)"
     },
     {
       "source": "shopify",

@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from chalicelib import state
+from chalicelib import config, state
 from chalicelib.models import EventInbox, LedgerEntry
 from chalicelib.money import format_minor_units
 from chalicelib.resolve import CoverageStatus, Resolution, resolve_all
@@ -23,7 +23,7 @@ class Balance:
 
 
 def coverage(session: Session) -> list[Resolution]:
-    return resolve_all(state.load_snapshot(session))
+    return resolve_all(state.load_snapshot(session), config.subscription_origin_window())
 
 
 def balances(session: Session) -> dict[str, Balance]:

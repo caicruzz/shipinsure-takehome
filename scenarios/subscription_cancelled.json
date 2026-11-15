@@ -16,12 +16,6 @@
       "label": "subscription S created"
     },
     {
-      "source": "recharge",
-      "topic": "order/created",
-      "fixture": "recharge/order_checkout_created.json",
-      "label": "Recharge checkout order (O -> S)"
-    },
-    {
       "source": "shopify",
       "topic": "orders/create",
       "webhook_id": "3c1f0a52-8e1e-4f4b-9b8e-2b0d5f6a7c11",

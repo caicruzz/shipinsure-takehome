@@ -20,6 +20,7 @@ EXPECTED_BALANCES = {
     "happy_path": {"6100000000001": 250, "6100000000002": 250},
     "late_cancellation": {"6100000000001": 250, "6100000000002": 0},
     "item_removed": {"6100000000001": 0, "6100000000002": 0},
+    "ambiguous_origin": {"6100000000001": 250},
 }
 
 
@@ -35,9 +36,10 @@ def _final_state(steps):
 @pytest.mark.parametrize(
     "name",
     [
-        "happy_path",  # 5 events, 120 permutations: TDD scenario 3
-        pytest.param("late_cancellation", marks=pytest.mark.slow),  # 6 events, 720 permutations
-        pytest.param("item_removed", marks=pytest.mark.slow),  # 6 events, 720 permutations, includes a stale update
+        "happy_path",  # 4 events, 24 permutations: TDD scenario 3
+        "late_cancellation",  # 5 events, 120 permutations
+        "item_removed",  # 5 events, 120 permutations, includes a stale update
+        "ambiguous_origin",  # 5 events, 120 permutations, ambiguity before or after billing
     ],
 )
 def test_all_permutations_reach_the_same_final_state(name):

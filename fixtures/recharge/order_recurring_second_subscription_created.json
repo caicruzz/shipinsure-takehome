@@ -1,14 +1,14 @@
 {
   "order": {
-    "id": 520000001,
+    "id": 520000004,
     "address_id": 61000001,
     "charge": {
-      "id": 330000001,
+      "id": 330000004,
       "external_transaction_id": {
-        "payment_processor": "ch_330000001"
+        "payment_processor": "ch_330000004"
       }
     },
-    "created_at": "2026-08-01T14:00:06+00:00",
+    "created_at": "2026-10-01T14:30:30+00:00",
     "currency": "USD",
     "customer": {
       "id": 98000001,
@@ -20,15 +20,15 @@
     "discounts": [],
     "error": null,
     "external_order_id": {
-      "ecommerce": "6100000000001"
+      "ecommerce": "6100000000006"
     },
     "external_order_number": {
-      "ecommerce": "1001"
+      "ecommerce": "1006"
     },
     "is_prepaid": false,
     "line_items": [
       {
-        "purchase_item_id": 410000001,
+        "purchase_item_id": 410000002,
         "purchase_item_type": "subscription",
         "external_product_id": {
           "ecommerce": "8800000000001"
@@ -54,12 +54,12 @@
         "variant_title": "12 oz / Whole Bean"
       }
     ],
-    "processed_at": "2026-08-01T14:00:06+00:00",
-    "scheduled_at": "2026-08-01T14:00:06+00:00",
+    "processed_at": "2026-10-01T14:30:30+00:00",
+    "scheduled_at": "2026-10-01T14:30:30+00:00",
     "status": "success",
     "subtotal_price": "18.00",
     "total_price": "18.00",
-    "type": "checkout",
-    "updated_at": "2026-08-01T14:00:06+00:00"
+    "type": "recurring",
+    "updated_at": "2026-10-01T14:30:30+00:00"
   }
 }

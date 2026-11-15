@@ -97,6 +97,8 @@ class ShopifyOrderRow(Base):
 
     shop: Mapped[str] = mapped_column(String(255), primary_key=True)
     order_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    customer_id: Mapped[str | None] = mapped_column(String(64), index=True)
+    variant_ids: Mapped[list[str]]
     premium_cents: Mapped[int | None]
     currency: Mapped[str] = mapped_column(String(3))
     created_at: Mapped[datetime]
@@ -105,13 +107,14 @@ class ShopifyOrderRow(Base):
 
 
 class RechargeOrderRow(Base):
-    """Latest known state of a Recharge order (checkout or recurring)."""
+    """Latest known state of a Recharge order. Only ``recurring`` orders affect coverage."""
 
     __tablename__ = "recharge_orders"
 
     recharge_order_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     type: Mapped[str] = mapped_column(String(32))
     shopify_order_id: Mapped[str | None] = mapped_column(String(64), index=True)
+    shopify_customer_id: Mapped[str | None] = mapped_column(String(64))
     subscription_ids: Mapped[list[str]]
     status: Mapped[str] = mapped_column(String(32))
     updated_at: Mapped[datetime]
@@ -123,7 +126,10 @@ class SubscriptionRow(Base):
     __tablename__ = "subscriptions"
 
     subscription_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    customer_id: Mapped[str | None] = mapped_column(String(64))
+    variant_id: Mapped[str | None] = mapped_column(String(64))
     status: Mapped[str] = mapped_column(String(32))
+    created_at: Mapped[datetime]
     cancelled_at: Mapped[datetime | None]
     updated_at: Mapped[datetime]
 

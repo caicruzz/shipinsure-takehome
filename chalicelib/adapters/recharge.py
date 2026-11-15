@@ -31,9 +31,15 @@ def resource_for_topic(topic: str) -> str:
     return topic.split("/", 1)[0]
 
 
+def _ecommerce_id(external: Mapping[str, Any] | None) -> str | None:
+    """Recharge wraps platform ids as ``{"ecommerce": "123"}``."""
+    value = (external or {}).get("ecommerce")
+    return str(value) if value else None
+
+
 def _normalize_order(order: Mapping[str, Any]) -> RechargeOrder:
-    external = order.get("external_order_id") or {}
-    ecommerce_id = external.get("ecommerce")
+    ecommerce_id = _ecommerce_id(order.get("external_order_id"))
+    customer = order.get("customer") or {}
     subscription_ids = sorted(
         {
             str(item["purchase_item_id"])
@@ -45,7 +51,8 @@ def _normalize_order(order: Mapping[str, Any]) -> RechargeOrder:
     return RechargeOrder(
         recharge_order_id=str(order["id"]),
         type=str(order["type"]),
-        shopify_order_id=str(ecommerce_id) if ecommerce_id else None,
+        shopify_order_id=ecommerce_id,
+        shopify_customer_id=_ecommerce_id(customer.get("external_customer_id")),
         subscription_ids=tuple(subscription_ids),
         status=str(order["status"]),
         updated_at=required_timestamp(order, "updated_at"),
@@ -55,7 +62,10 @@ def _normalize_order(order: Mapping[str, Any]) -> RechargeOrder:
 def _normalize_subscription(subscription: Mapping[str, Any]) -> Subscription:
     return Subscription(
         subscription_id=str(subscription["id"]),
+        customer_id=str(subscription["customer_id"]) if subscription.get("customer_id") is not None else None,
+        variant_id=_ecommerce_id(subscription.get("external_variant_id")),
         status=str(subscription["status"]),
+        created_at=required_timestamp(subscription, "created_at"),
         cancelled_at=parse_timestamp(subscription.get("cancelled_at")),
         updated_at=required_timestamp(subscription, "updated_at"),
     )
