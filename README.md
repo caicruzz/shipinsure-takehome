@@ -1,0 +1,102 @@
+# 🛡️ ShipInsure Covered Orders (Shopify + Recharge) – Take-Home
+
+> [!IMPORTANT]
+> **Reviewers: please read the [Technical Design Doc](docs/TDD.md) first.** It holds the thinking behind this take-home: the problem, the assumption the whole linkage rests on, the architecture, the coverage rules, the trade-offs, what was deliberately left out, and open questions. This README only covers what was built and how to run it.
+
+A Python + [Chalice](https://aws.github.io/chalice/) prototype that treats Shopify and Recharge webhooks as the system of record. A renewal order that has no ShipInsure line item inherits coverage from the subscription's original order, and the billing ledger ends with the same balance per order whether events arrive once, many times, or out of order.
+
+## How it works
+
+1. **Persist first.** Each delivery is stored raw in `events_inbox` and committed before anything else happens. A duplicate hits a unique key, bumps `delivery_count`, and is not processed again.
+2. **Normalize.** Per-source adapters upsert the latest state, guarded by `updated_at` so a stale event never overwrites newer state. Recharge sits behind a `SubscriptionPlatform` Protocol.
+3. **Recompute.** A pure `resolve()` re-derives coverage for every order from stored state after each event. It never reacts to "what just happened".
+4. **Post the diff.** For each order, *should be billed − already billed* is appended to an append-only ledger as a charge or a negative adjustment, in one atomic SQL statement.
+
+## Run it
+
+Needs Python 3.11+ (tested on 3.13) on macOS or Linux.
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+```
+
+```bash
+pip install -r requirements-dev.txt
+```
+
+### Tests
+
+```bash
+pytest
+```
+
+That runs everything (~1 min), including every ordering of the event sequences: 120 for the happy path, 720 each for the two scenarios with an update event. For a ~4 s loop that skips the 720-ordering runs:
+
+```bash
+pytest -m "not slow"
+```
+
+### Replay a scenario
+
+```bash
+python replay.py scenarios/out_of_order.json
+```
+
+Sends fixture webhooks through the same ingest code the routes use, against a throwaway SQLite file. It prints what is pending after each delivery, then the inbox, coverage, pending, ledger and balance tables. Add `--db shipinsure.db` to keep the database.
+
+| Scenario | What it shows |
+| --- | --- |
+| `happy_path` | Original order → subscription → checkout order → renewal: one direct and one inherited charge |
+| `duplicates` | Every delivery sent 3×: one inbox row each with `delivery_count = 3`, ledger unchanged |
+| `out_of_order` | Renewal side first: R is pending for three different reasons, then charged |
+| `missing_checkout` | Checkout order arrives last: R is pending (`missing_subscription_origin`) until it does |
+| `late_cancellation` | Renewal cancelled after billing: −2.50 adjustment |
+| `item_removed` | ShipInsure item removed from the original order: both orders reversed |
+| `subscription_cancelled` | Subscription cancelled: the earlier renewal stays billed, a later one is not covered |
+
+### Local server + Postman
+
+```bash
+chalice local --stage local --port 8000
+```
+
+- **Postman:** import [`postman/shipinsure-covered-orders.postman_collection.json`](postman/shipinsure-covered-orders.postman_collection.json). Send the "Happy path" folder in order (or in any order; the final ledger is the same), then try "Changes after billing". Shopify requests use fixed webhook ids, so sending one twice shows dedupe.
+- **Database:** the `local` stage writes `shipinsure.db` in the repo folder (git-ignored). Delete it and restart the server to start over. Plain `chalice local` uses the `dev` stage, which is the deploy config and writes to `/tmp/shipinsure.db` because Lambda can only write to `/tmp`.
+
+| Endpoint | Notes |
+| --- | --- |
+| `POST /webhooks/shopify` | Needs `X-Shopify-Topic`, `X-Shopify-Shop-Domain` and `X-Shopify-Webhook-Id` (the dedupe key) |
+| `POST /webhooks/recharge/{resource}/{action}` | Topic comes from the path, e.g. `/webhooks/recharge/order/created`. Dedupe key is `{topic}:{object_id}:{updated_at}` |
+
+Responses: `200` when the delivery is stored (new, duplicate, or stored but processing failed, in which case the row is marked `failed` for retry); `400` for missing headers or a body that isn't a JSON object; `5xx` only if the raw delivery could not be stored.
+
+## Layout
+
+```text
+app.py                  Chalice routes (thin HTTP layer)
+chalicelib/
+  models.py, db.py      SQLAlchemy 2.0 models (five tables) and engine setup
+  ingest.py             persist -> normalize -> recompute -> post diff
+  adapters/             Shopify and Recharge payloads -> normalized records
+  state.py              updated_at-guarded upserts, snapshot read
+  resolve.py            coverage rules, pure functions
+  ledger.py             ledger posting as a diff
+  scenarios.py, report.py   replay loader and terminal tables
+replay.py               scenario replay CLI
+fixtures/               Shopify REST Order and Recharge 2021-11 payloads
+scenarios/              delivery sequences used by replay.py and the tests
+postman/                Postman collection for the local server
+docs/TDD.md             the design doc
+```
+
+## Decisions made while building
+
+These are details the TDD left open, plus a few places where the build differs from it:
+
+- **Spotting the ShipInsure line item** (TDD open question #3): a case-insensitive `shipinsure` match on the line item's vendor or title, configurable with `SHIPINSURE_LINE_ITEM_KEYWORD`. Premium is `price × current_quantity`, so an item removed by an order edit counts as zero.
+- **Joining across systems:** Recharge orders join Shopify orders on order id alone, because Recharge payloads carry no shop and Shopify order ids are globally unique.
+- **Pending or not covered means "should bill 0",** so an order that loses coverage has its earlier charge reversed. Every balance is therefore a function of stored state only.
+- **A subscription not seen yet is treated as not cancelled.** Recharge order `status` is stored, but no rule uses it.
+- **Dependencies are split:** `requirements.txt` (runtime, packaged by `chalice deploy`) and `requirements-dev.txt` (adds pytest). The TDD's run line used `requirements.txt` alone.
+- **Extra test coverage:** three scenarios beyond the TDD's four (late cancellation, item removed, subscription cancelled). The two with an update event are run in all 720 orderings, which is what proves a stale update can't change the outcome.
+- **Why the full suite takes ~1 min:** SQLAlchemy 2.0 doesn't cache SQLite `ON CONFLICT` statements, so they recompile on every call. SQLAlchemy 2.1 caches them but only saved ~25%, so the build stays on 2.0 as the TDD specifies.
