@@ -6,3 +6,4 @@ __pycache__/
 .chalice/venv/
 *.db
 *.db-journal
+.DS_Store
