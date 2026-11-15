@@ -17,12 +17,13 @@
   "item": [
     {
       "name": "1. Happy path (original order -> subscription -> renewal)",
+      "description": "Send in order, or in any order: the final ledger is the same. Expect two 2.50 USD charges, on O (covered_direct) and R (covered_inherited).",
       "item": [
         {
           "name": "1. Shopify orders/create - original order O (ShipInsure item)",
           "request": {
             "method": "POST",
-            "description": "Order #1001 with a $2.50 ShipInsure line item. Expect a 2.50 USD covered_direct charge.",
+            "description": "Order #1001: House Blend Coffee + a $2.50 ShipInsure line item. Expect a 2.50 USD covered_direct charge.",
             "header": [
               {
                 "key": "Content-Type",
@@ -71,7 +72,7 @@
           "name": "2. Recharge subscription/created - subscription S",
           "request": {
             "method": "POST",
-            "description": "Subscription 410000001 created from order O.",
+            "description": "Recharge creates S from Shopify's order (Shopify checkout: no Recharge order for the first purchase). Same customer and variant as O, created 5 seconds after it.",
             "header": [
               {
                 "key": "Content-Type",
@@ -102,44 +103,10 @@
           }
         },
         {
-          "name": "3. Recharge order/created - checkout order (links S to O)",
+          "name": "3. Shopify orders/create - renewal order R (no ShipInsure item)",
           "request": {
             "method": "POST",
-            "description": "type=checkout, external_order_id.ecommerce = O. This is the link the whole inheritance rests on (TDD \u00a72).",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"order\": {\n    \"id\": 520000001,\n    \"address_id\": 61000001,\n    \"charge\": {\n      \"id\": 330000001,\n      \"external_transaction_id\": {\n        \"payment_processor\": \"ch_330000001\"\n      }\n    },\n    \"created_at\": \"2026-08-01T14:00:06+00:00\",\n    \"currency\": \"USD\",\n    \"customer\": {\n      \"id\": 98000001,\n      \"external_customer_id\": {\n        \"ecommerce\": \"7200000000001\"\n      },\n      \"hash\": \"a1b2c3d4e5f6\"\n    },\n    \"discounts\": [],\n    \"error\": null,\n    \"external_order_id\": {\n      \"ecommerce\": \"6100000000001\"\n    },\n    \"external_order_number\": {\n      \"ecommerce\": \"1001\"\n    },\n    \"is_prepaid\": false,\n    \"line_items\": [\n      {\n        \"purchase_item_id\": 410000001,\n        \"purchase_item_type\": \"subscription\",\n        \"external_product_id\": {\n          \"ecommerce\": \"8800000000001\"\n        },\n        \"external_variant_id\": {\n          \"ecommerce\": \"45000000000001\"\n        },\n        \"grams\": 340,\n        \"handle\": null,\n        \"images\": {},\n        \"original_price\": \"18.00\",\n        \"properties\": [],\n        \"quantity\": 1,\n        \"sku\": \"COFFEE-HB-12\",\n        \"tax_due\": \"0.00\",\n        \"tax_lines\": [],\n        \"taxable\": true,\n        \"taxable_amount\": \"18.00\",\n        \"title\": \"House Blend Coffee\",\n        \"total_price\": \"18.00\",\n        \"unit_price\": \"18.00\",\n        \"unit_price_includes_tax\": false,\n        \"variant_title\": \"12 oz / Whole Bean\"\n      }\n    ],\n    \"processed_at\": \"2026-08-01T14:00:06+00:00\",\n    \"scheduled_at\": \"2026-08-01T14:00:06+00:00\",\n    \"status\": \"success\",\n    \"subtotal_price\": \"18.00\",\n    \"total_price\": \"18.00\",\n    \"type\": \"checkout\",\n    \"updated_at\": \"2026-08-01T14:00:06+00:00\"\n  }\n}\n",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/webhooks/recharge/order/created",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "webhooks",
-                "recharge",
-                "order",
-                "created"
-              ]
-            }
-          }
-        },
-        {
-          "name": "4. Shopify orders/create - renewal order R (no ShipInsure item)",
-          "request": {
-            "method": "POST",
-            "description": "Order #1002, no ShipInsure item. Not covered on its own until step 5 links it to S.",
+            "description": "Order #1002, no ShipInsure item. Not covered on its own until step 4 links it to S.",
             "header": [
               {
                 "key": "Content-Type",
@@ -185,10 +152,10 @@
           }
         },
         {
-          "name": "5. Recharge order/created - recurring order (links R to S)",
+          "name": "4. Recharge order/created - recurring order (links R to S)",
           "request": {
             "method": "POST",
-            "description": "type=recurring, external_order_id.ecommerce = R. Expect a 2.50 USD covered_inherited charge for R.",
+            "description": "type=recurring, external_order_id.ecommerce = R. S is matched to O by customer + variant + time, so expect a 2.50 USD covered_inherited charge for R.",
             "header": [
               {
                 "key": "Content-Type",
@@ -218,17 +185,17 @@
             }
           }
         }
-      ],
-      "description": "Send in order, or in any order: the final ledger is the same. Expect two 2.50 USD charges, on O (covered_direct) and R (covered_inherited)."
+      ]
     },
     {
       "name": "2. Changes after billing",
+      "description": "Each change is clearest on its own: reset (delete shipinsure.db, restart the server), send the happy path, then send one change. The subscription cancellation is a set of three requests: send them together.",
       "item": [
         {
           "name": "Shopify orders/cancelled - renewal R cancelled",
           "request": {
             "method": "POST",
-            "description": "Send after the happy path. Expect a -2.50 USD adjustment on R (reversal:order_cancelled).",
+            "description": "Expect a -2.50 USD adjustment on R (reversal:order_cancelled).",
             "header": [
               {
                 "key": "Content-Type",
@@ -277,7 +244,7 @@
           "name": "Shopify orders/updated - ShipInsure item removed from O",
           "request": {
             "method": "POST",
-            "description": "Send after the happy path. Coverage follows the original order, so both O and R are reversed.",
+            "description": "Coverage follows the original order, so both O and R are reversed.",
             "header": [
               {
                 "key": "Content-Type",
@@ -439,8 +406,228 @@
             }
           }
         }
-      ],
-      "description": "Each change is clearest on its own: reset (delete shipinsure.db, restart the server), send the happy path, then send one change. The subscription cancellation is a set of three requests: send them together."
+      ]
+    },
+    {
+      "name": "3. Matching edge cases",
+      "description": "After the happy path: the first request shows an ambiguous match; the other four show a renewal not being mistaken for an original order. Reset between the two.",
+      "item": [
+        {
+          "name": "Shopify orders/create - second order, same customer + variant",
+          "request": {
+            "method": "POST",
+            "description": "Order #1004, placed 20 minutes before O with the same coffee variant. Two candidates for S's original order: R goes pending (ambiguous_subscription_origin). Sent after billing, R's charge is reversed.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Shopify-Topic",
+                "value": "orders/create"
+              },
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "{{shopDomain}}"
+              },
+              {
+                "key": "X-Shopify-Webhook-Id",
+                "value": "7c8d9e0f-1a2b-4c3d-9e4f-5a6b7c8d9e0f",
+                "description": "Fixed id, like a real Shopify retry. Send twice to see dedupe."
+              },
+              {
+                "key": "X-Shopify-API-Version",
+                "value": "2025-10"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 6100000000004,\n  \"admin_graphql_api_id\": \"gid://shopify/Order/6100000000004\",\n  \"name\": \"#1004\",\n  \"order_number\": 1004,\n  \"created_at\": \"2026-08-01T09:40:00-04:00\",\n  \"updated_at\": \"2026-08-01T09:40:00-04:00\",\n  \"processed_at\": \"2026-08-01T09:40:00-04:00\",\n  \"cancelled_at\": null,\n  \"cancel_reason\": null,\n  \"currency\": \"USD\",\n  \"presentment_currency\": \"USD\",\n  \"subtotal_price\": \"18.00\",\n  \"total_price\": \"18.00\",\n  \"financial_status\": \"paid\",\n  \"fulfillment_status\": null,\n  \"source_name\": \"web\",\n  \"tags\": \"\",\n  \"test\": false,\n  \"customer\": {\n    \"id\": 7200000000001,\n    \"admin_graphql_api_id\": \"gid://shopify/Customer/7200000000001\"\n  },\n  \"line_items\": [\n    {\n      \"id\": 14100000000041,\n      \"admin_graphql_api_id\": \"gid://shopify/LineItem/14100000000041\",\n      \"product_id\": 8800000000001,\n      \"variant_id\": 45000000000001,\n      \"title\": \"House Blend Coffee\",\n      \"variant_title\": \"12 oz / Whole Bean\",\n      \"name\": \"House Blend Coffee - 12 oz / Whole Bean\",\n      \"vendor\": \"Demo Coffee Co\",\n      \"sku\": \"COFFEE-HB-12\",\n      \"quantity\": 1,\n      \"current_quantity\": 1,\n      \"fulfillable_quantity\": 1,\n      \"price\": \"18.00\",\n      \"price_set\": {\n        \"shop_money\": {\n          \"amount\": \"18.00\",\n          \"currency_code\": \"USD\"\n        },\n        \"presentment_money\": {\n          \"amount\": \"18.00\",\n          \"currency_code\": \"USD\"\n        }\n      },\n      \"requires_shipping\": true,\n      \"taxable\": true,\n      \"gift_card\": false,\n      \"properties\": []\n    }\n  ]\n}\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhooks/shopify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "webhooks",
+                "shopify"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Shopify orders/create - order O2 (starts subscription S2)",
+          "request": {
+            "method": "POST",
+            "description": "Order #1005, 25 minutes after renewal R, same customer and variant, with a ShipInsure item. Send the next three after it.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Shopify-Topic",
+                "value": "orders/create"
+              },
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "{{shopDomain}}"
+              },
+              {
+                "key": "X-Shopify-Webhook-Id",
+                "value": "1f2e3d4c-5b6a-4978-8695-a4b3c2d1e0f9",
+                "description": "Fixed id, like a real Shopify retry. Send twice to see dedupe."
+              },
+              {
+                "key": "X-Shopify-API-Version",
+                "value": "2025-10"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 6100000000005,\n  \"admin_graphql_api_id\": \"gid://shopify/Order/6100000000005\",\n  \"name\": \"#1005\",\n  \"order_number\": 1005,\n  \"created_at\": \"2026-09-01T10:30:00-04:00\",\n  \"updated_at\": \"2026-09-01T10:30:00-04:00\",\n  \"processed_at\": \"2026-09-01T10:30:00-04:00\",\n  \"cancelled_at\": null,\n  \"cancel_reason\": null,\n  \"currency\": \"USD\",\n  \"presentment_currency\": \"USD\",\n  \"subtotal_price\": \"20.50\",\n  \"total_price\": \"20.50\",\n  \"financial_status\": \"paid\",\n  \"fulfillment_status\": null,\n  \"source_name\": \"web\",\n  \"tags\": \"\",\n  \"test\": false,\n  \"customer\": {\n    \"id\": 7200000000001,\n    \"admin_graphql_api_id\": \"gid://shopify/Customer/7200000000001\"\n  },\n  \"line_items\": [\n    {\n      \"id\": 14100000000051,\n      \"admin_graphql_api_id\": \"gid://shopify/LineItem/14100000000051\",\n      \"product_id\": 8800000000001,\n      \"variant_id\": 45000000000001,\n      \"title\": \"House Blend Coffee\",\n      \"variant_title\": \"12 oz / Whole Bean\",\n      \"name\": \"House Blend Coffee - 12 oz / Whole Bean\",\n      \"vendor\": \"Demo Coffee Co\",\n      \"sku\": \"COFFEE-HB-12\",\n      \"quantity\": 1,\n      \"current_quantity\": 1,\n      \"fulfillable_quantity\": 1,\n      \"price\": \"18.00\",\n      \"price_set\": {\n        \"shop_money\": {\n          \"amount\": \"18.00\",\n          \"currency_code\": \"USD\"\n        },\n        \"presentment_money\": {\n          \"amount\": \"18.00\",\n          \"currency_code\": \"USD\"\n        }\n      },\n      \"requires_shipping\": true,\n      \"taxable\": true,\n      \"gift_card\": false,\n      \"properties\": []\n    },\n    {\n      \"id\": 14100000000052,\n      \"admin_graphql_api_id\": \"gid://shopify/LineItem/14100000000052\",\n      \"product_id\": 8800000000099,\n      \"variant_id\": 45000000000099,\n      \"title\": \"ShipInsure Package Protection\",\n      \"variant_title\": \"$2.50\",\n      \"name\": \"ShipInsure Package Protection - $2.50\",\n      \"vendor\": \"ShipInsure\",\n      \"sku\": \"SHIPINSURE-250\",\n      \"quantity\": 1,\n      \"current_quantity\": 1,\n      \"fulfillable_quantity\": 1,\n      \"price\": \"2.50\",\n      \"price_set\": {\n        \"shop_money\": {\n          \"amount\": \"2.50\",\n          \"currency_code\": \"USD\"\n        },\n        \"presentment_money\": {\n          \"amount\": \"2.50\",\n          \"currency_code\": \"USD\"\n        }\n      },\n      \"requires_shipping\": false,\n      \"taxable\": false,\n      \"gift_card\": false,\n      \"properties\": []\n    }\n  ]\n}\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhooks/shopify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "webhooks",
+                "shopify"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Recharge subscription/created - subscription S2",
+          "request": {
+            "method": "POST",
+            "description": "Created 5 seconds after O2. Renewal R is also inside the window but is excluded as a renewal.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subscription\": {\n    \"id\": 410000002,\n    \"address_id\": 61000001,\n    \"customer_id\": 98000001,\n    \"analytics_data\": {\n      \"utm_params\": []\n    },\n    \"cancellation_reason\": null,\n    \"cancellation_reason_comments\": null,\n    \"cancelled_at\": null,\n    \"charge_interval_frequency\": \"1\",\n    \"order_interval_frequency\": \"1\",\n    \"order_interval_unit\": \"month\",\n    \"created_at\": \"2026-09-01T14:30:05+00:00\",\n    \"updated_at\": \"2026-09-01T14:30:05+00:00\",\n    \"external_product_id\": {\n      \"ecommerce\": \"8800000000001\"\n    },\n    \"external_variant_id\": {\n      \"ecommerce\": \"45000000000001\"\n    },\n    \"has_queued_charges\": true,\n    \"is_prepaid\": false,\n    \"is_skippable\": true,\n    \"is_swappable\": true,\n    \"max_retries_reached\": false,\n    \"next_charge_scheduled_at\": \"2026-10-01\",\n    \"order_day_of_month\": null,\n    \"order_day_of_week\": null,\n    \"presentment_currency\": \"USD\",\n    \"price\": \"18.00\",\n    \"product_title\": \"House Blend Coffee\",\n    \"properties\": [],\n    \"quantity\": 1,\n    \"sku\": \"COFFEE-HB-12\",\n    \"sku_override\": false,\n    \"status\": \"active\",\n    \"variant_title\": \"12 oz / Whole Bean\"\n  }\n}\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhooks/recharge/subscription/created",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "webhooks",
+                "recharge",
+                "subscription",
+                "created"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Shopify orders/create - renewal order R4 of S2",
+          "request": {
+            "method": "POST",
+            "description": "Order #1006, no ShipInsure item.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Shopify-Topic",
+                "value": "orders/create"
+              },
+              {
+                "key": "X-Shopify-Shop-Domain",
+                "value": "{{shopDomain}}"
+              },
+              {
+                "key": "X-Shopify-Webhook-Id",
+                "value": "0a9b8c7d-6e5f-4a3b-8c2d-1e0f9a8b7c6d",
+                "description": "Fixed id, like a real Shopify retry. Send twice to see dedupe."
+              },
+              {
+                "key": "X-Shopify-API-Version",
+                "value": "2025-10"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 6100000000006,\n  \"admin_graphql_api_id\": \"gid://shopify/Order/6100000000006\",\n  \"name\": \"#1006\",\n  \"order_number\": 1006,\n  \"created_at\": \"2026-10-01T10:30:00-04:00\",\n  \"updated_at\": \"2026-10-01T10:30:00-04:00\",\n  \"processed_at\": \"2026-10-01T10:30:00-04:00\",\n  \"cancelled_at\": null,\n  \"cancel_reason\": null,\n  \"currency\": \"USD\",\n  \"presentment_currency\": \"USD\",\n  \"subtotal_price\": \"18.00\",\n  \"total_price\": \"18.00\",\n  \"financial_status\": \"paid\",\n  \"fulfillment_status\": null,\n  \"source_name\": \"subscription_contract\",\n  \"tags\": \"Subscription Recurring Order\",\n  \"test\": false,\n  \"customer\": {\n    \"id\": 7200000000001,\n    \"admin_graphql_api_id\": \"gid://shopify/Customer/7200000000001\"\n  },\n  \"line_items\": [\n    {\n      \"id\": 14100000000061,\n      \"admin_graphql_api_id\": \"gid://shopify/LineItem/14100000000061\",\n      \"product_id\": 8800000000001,\n      \"variant_id\": 45000000000001,\n      \"title\": \"House Blend Coffee\",\n      \"variant_title\": \"12 oz / Whole Bean\",\n      \"name\": \"House Blend Coffee - 12 oz / Whole Bean\",\n      \"vendor\": \"Demo Coffee Co\",\n      \"sku\": \"COFFEE-HB-12\",\n      \"quantity\": 1,\n      \"current_quantity\": 1,\n      \"fulfillable_quantity\": 1,\n      \"price\": \"18.00\",\n      \"price_set\": {\n        \"shop_money\": {\n          \"amount\": \"18.00\",\n          \"currency_code\": \"USD\"\n        },\n        \"presentment_money\": {\n          \"amount\": \"18.00\",\n          \"currency_code\": \"USD\"\n        }\n      },\n      \"requires_shipping\": true,\n      \"taxable\": true,\n      \"gift_card\": false,\n      \"properties\": []\n    }\n  ]\n}\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhooks/shopify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "webhooks",
+                "shopify"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Recharge order/created - recurring order (links R4 to S2)",
+          "request": {
+            "method": "POST",
+            "description": "Expect R4 covered_inherited from O2, not from renewal R.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"order\": {\n    \"id\": 520000004,\n    \"address_id\": 61000001,\n    \"charge\": {\n      \"id\": 330000004,\n      \"external_transaction_id\": {\n        \"payment_processor\": \"ch_330000004\"\n      }\n    },\n    \"created_at\": \"2026-10-01T14:30:30+00:00\",\n    \"currency\": \"USD\",\n    \"customer\": {\n      \"id\": 98000001,\n      \"external_customer_id\": {\n        \"ecommerce\": \"7200000000001\"\n      },\n      \"hash\": \"a1b2c3d4e5f6\"\n    },\n    \"discounts\": [],\n    \"error\": null,\n    \"external_order_id\": {\n      \"ecommerce\": \"6100000000006\"\n    },\n    \"external_order_number\": {\n      \"ecommerce\": \"1006\"\n    },\n    \"is_prepaid\": false,\n    \"line_items\": [\n      {\n        \"purchase_item_id\": 410000002,\n        \"purchase_item_type\": \"subscription\",\n        \"external_product_id\": {\n          \"ecommerce\": \"8800000000001\"\n        },\n        \"external_variant_id\": {\n          \"ecommerce\": \"45000000000001\"\n        },\n        \"grams\": 340,\n        \"handle\": null,\n        \"images\": {},\n        \"original_price\": \"18.00\",\n        \"properties\": [],\n        \"quantity\": 1,\n        \"sku\": \"COFFEE-HB-12\",\n        \"tax_due\": \"0.00\",\n        \"tax_lines\": [],\n        \"taxable\": true,\n        \"taxable_amount\": \"18.00\",\n        \"title\": \"House Blend Coffee\",\n        \"total_price\": \"18.00\",\n        \"unit_price\": \"18.00\",\n        \"unit_price_includes_tax\": false,\n        \"variant_title\": \"12 oz / Whole Bean\"\n      }\n    ],\n    \"processed_at\": \"2026-10-01T14:30:30+00:00\",\n    \"scheduled_at\": \"2026-10-01T14:30:30+00:00\",\n    \"status\": \"success\",\n    \"subtotal_price\": \"18.00\",\n    \"total_price\": \"18.00\",\n    \"type\": \"recurring\",\n    \"updated_at\": \"2026-10-01T14:30:30+00:00\"\n  }\n}\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhooks/recharge/order/created",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "webhooks",
+                "recharge",
+                "order",
+                "created"
+              ]
+            }
+          }
+        }
+      ]
     }
   ]
 }
