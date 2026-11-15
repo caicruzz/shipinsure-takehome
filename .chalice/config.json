@@ -7,6 +7,11 @@
       "environment_variables": {
         "DATABASE_URL": "sqlite:////tmp/shipinsure.db"
       }
+    },
+    "local": {
+      "environment_variables": {
+        "DATABASE_URL": "sqlite:///shipinsure.db"
+      }
     }
   }
 }
