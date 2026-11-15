@@ -68,6 +68,10 @@ chalice local --stage local --port 8000
 
 Responses: `200` when the delivery is stored (new, duplicate, or stored but processing failed, in which case the row is marked `failed` for retry); `400` for missing headers or a body that isn't a JSON object; `5xx` only if the raw delivery could not be stored.
 
+## AI usage
+
+All code, tests and fixtures were AI-generated against the TDD. The time went into the design, the research behind it, and reviewing and running the result: about 2 hours in total, including a redesign after the Recharge research. The breakdown is in [TDD §8](docs/TDD.md#8-time-and-ai-usage).
+
 ## Layout
 
 ```text
